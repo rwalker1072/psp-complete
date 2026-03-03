@@ -31,7 +31,10 @@
 <nav>
   <a onclick="showTab('home')">🏠 Home</a>
   <a onclick="showTab('problems')">📋 Problems</a>
+  <a onclick="showTab('bidding')">⚖️ Bidding</a>
+  <a onclick="showTab('projects')">🏗️ Projects</a>
   <a onclick="showTab('utopia')">🌌 Utopia</a>
+  <a onclick="showTab('curator')">🛡️ Curator</a>
 </nav>
 
 <div class="container">
@@ -51,13 +54,32 @@
     <div id="problems-list">Connecting to registry...</div>
   </div>
 
+<div id="bidding" class="tab">
+  <h2>Bidding Portal</h2>
+  <p>Submit and view resource bids for active solutions.</p>
+  <div id="bidding-list" class="card">No active bids found.</div>
+</div>
+
+<div id="projects" class="tab">
+  <h2>Project Tracker</h2>
+  <p>Monitor the implementation of winning bids.</p>
+</div>
+
   <div id="utopia" class="tab">
     <h2>Utopia Simulator</h2>
     <div id="utopia-content">
       <p>Projecting post-scarcity scenarios based on current solution trajectories.</p>
     </div>
   </div>
+
+<div id="curator" class="tab">
+  <h2>Curator Dashboard</h2>
+  <p>Approve or flag community-submitted problems and solutions.</p>
 </div>
+
+
+</div>
+
 
 <script>
 let db;
