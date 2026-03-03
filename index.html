@@ -99,21 +99,26 @@ function updateUtopia() {
 }
 
 window.onload = () => {
+  console.log('onload started - fetching problems...');
+
   renderGraph();
   updateUtopia();
   showTab('home');
 
-  // Load problems from Firestore
   db.collection('problems').get()
     .then(snapshot => {
+      console.log('Firestore query complete. Total documents:', snapshot.size);
       const list = document.getElementById('problems-list');
       if (list) {
-        list.innerHTML = ''; // Clear loading message
+        list.innerHTML = ''; // Clear placeholder
         if (snapshot.empty) {
-          list.innerHTML = '<p>No problems found yet. Seed data or add some!</p>';
+          console.log('No documents found in "problems" collection');
+          list.innerHTML = '<p style="color:orange;">No problems in Firestore yet. Check seed script or collection name.</p>';
         } else {
+          console.log('Rendering ' + snapshot.size + ' problems');
           snapshot.forEach(doc => {
             const data = doc.data();
+            console.log('Rendering problem:', data.title, '(ID:', doc.id, ')');
             const div = document.createElement('div');
             div.className = 'problem';
             div.innerHTML = `
@@ -125,26 +130,18 @@ window.onload = () => {
             list.appendChild(div);
           });
         }
+      } else {
+        console.error('Element #problems-list not found in DOM');
       }
     })
     .catch(err => {
-      console.error('Failed to load problems:', err);
+      console.error('Firestore load error:', err.code, err.message);
       const list = document.getElementById('problems-list');
-      if (list) list.innerHTML = '<p style="color:red;">Error loading data from Firebase: ' + err.message + '</p>';
+      if (list) {
+        list.innerHTML = '<p style="color:red;">Error loading data: ' + err.message + '</p>';
+      }
     });
 };
-
-// Optional: Load utopia example
-db.collection('utopia').doc('post-scarcity').get()
-  .then(doc => {
-    if (doc.exists) {
-      const data = doc.data();
-      document.getElementById('utopia-output').innerHTML += `<br>Loaded from Firestore: ${data.title} (QoL ${data.qol})`;
-    }
-  })
-  .catch(err => console.error('Utopia load failed:', err));
-
-
 
 </script>
 </body>
