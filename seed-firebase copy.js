@@ -1,8 +1,10 @@
-// seed-firebase.js — run once
+// seed-firebase.js — run once to load ingested data into Firestore
+// Loads config from firebase-config.js (no hard-coding)
+
 const firebase = require('firebase/compat/app');
 require('firebase/compat/firestore');
 
-// Load config from separate file (same as app uses)
+// Load config from the separate file (same as index.html uses)
 const configModule = require('./firebase-config');
 const firebaseConfig = configModule.firebaseConfig;
 
@@ -11,7 +13,7 @@ const db = firebase.firestore();
 
 const seedData = async () => {
   try {
-    // Problems from "Grok 100 problems solved simulation.pdf" (Round 1 + more)
+    // Seed core problems from "Grok 100 problems solved simulation.pdf"
     const problems = db.collection('problems');
 
     await problems.doc('climate-change').set({
@@ -23,7 +25,7 @@ const seedData = async () => {
         { text: 'Transition to renewables by 2050, carbon capture', status: 'in progress', org: 'Climeworks', orgType: 'Company' },
         { text: 'Strict regulations, sustainable land use, carbon tax', status: 'exists', org: 'IPCC', orgType: 'International Organization' }
       ],
-      derivedProblems: ['Economic disruption → Unemployment (Rank 11)', 'High costs → Debt Crises (Rank 31)'],
+      derivedProblems: ['Economic disruption → Unemployment (Rank 11)', 'High costs → Debt Crises (Rank 31)', 'Political resistance → Political Instability (Rank 5)'],
       qolImpact: -20,
       inadvertentSolutions: ['Pollution reduced by 30%', 'Deforestation reduced by 25%']
     });
@@ -39,30 +41,19 @@ const seedData = async () => {
       ]
     });
 
-    // Add one more from your sim (e.g., Inequality)
-    await problems.doc('inequality').set({
-      rank: 3,
-      title: 'Inequality',
-      type: 'Social/Economic',
-      overview: 'Disparities in wealth, access, and opportunity.',
-      solutions: [
-        { text: 'Progressive taxation and redistribution', status: 'proposed', org: 'Oxfam', orgType: 'NGO' }
-      ]
-    });
-
-    // Utopia from "What if everything were solved_.pdf"
+    // Seed utopia from "What if everything were solved_.pdf"
     const utopia = db.collection('utopia').doc('post-scarcity');
     await utopia.set({
       title: 'Post-Scarcity Utopia',
       qol: 95,
       description: 'Abundance, harmony, creativity unbound — but risk of ennui and stagnation.',
       pros: ['Creative explosion', 'No scarcity', 'Deep social connections'],
-      cons: ['Existential void', 'Psychological stagnation']
+      cons: ['Existential void', 'Psychological stagnation', 'Loss of purpose from struggle']
     });
 
     console.log('Seeded core data into Firestore!');
   } catch (error) {
-    console.error('Seed failed:', error.message);
+    console.error('Seed failed:', error);
   }
 };
 
