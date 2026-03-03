@@ -48,13 +48,11 @@
   </div>
 
   <!-- PROBLEMS -->
-  <!-- PROBLEMS  - orig 
   <div id="problems" class="tab">
     <h2>Top 100 Problems & Solutions</h2>
     <div id="problems-list">Problems load here (from your files + Firebase).</div>
   </div>
--->
-  <!-- PROBLEMS - w data -->
+
 
   <!-- GRAPH -->
   <div id="graph" class="tab">
@@ -105,34 +103,36 @@ window.onload = () => {
   updateUtopia();
   showTab('home');
 
-// Load problems from Firestore
-db.collection('problems').get()
-  .then(snapshot => {
-    const list = document.getElementById('problems-list');
-    if (list) {
-      list.innerHTML = ''; // Clear placeholder
-      if (snapshot.empty) {
-        list.innerHTML = '<p>No problems found yet. Add some!</p>';
-      } else {
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const div = document.createElement('div');
-          div.className = 'problem';
-          div.innerHTML = `
-            <h3>${data.title} (Rank ${data.rank || 'N/A'})</h3>
-            <p>${data.overview || 'No overview'}</p>
-            <p><strong>Type:</strong> ${data.type || 'N/A'}</p>
-            <p><strong>Solutions:</strong> ${data.solutions?.length || 0}</p>
-          `;
-          list.appendChild(div);
-        });
+  // Load problems from Firestore
+  db.collection('problems').get()
+    .then(snapshot => {
+      const list = document.getElementById('problems-list');
+      if (list) {
+        list.innerHTML = ''; // Clear loading message
+        if (snapshot.empty) {
+          list.innerHTML = '<p>No problems found yet. Seed data or add some!</p>';
+        } else {
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const div = document.createElement('div');
+            div.className = 'problem';
+            div.innerHTML = `
+              <h3>${data.title || 'Untitled'} (Rank ${data.rank || 'N/A'})</h3>
+              <p>${data.overview || 'No overview'}</p>
+              <p><strong>Type:</strong> ${data.type || 'N/A'}</p>
+              <p><strong>Solutions:</strong> ${data.solutions?.length || 0}</p>
+            `;
+            list.appendChild(div);
+          });
+        }
       }
-    }
-  })
-  .catch(err => {
-    console.error('Failed to load problems:', err);
-    document.getElementById('problems-list').innerHTML += '<p>Error loading data from Firebase.</p>';
-  });
+    })
+    .catch(err => {
+      console.error('Failed to load problems:', err);
+      const list = document.getElementById('problems-list');
+      if (list) list.innerHTML = '<p style="color:red;">Error loading data from Firebase: ' + err.message + '</p>';
+    });
+};
 
 // Optional: Load utopia example
 db.collection('utopia').doc('post-scarcity').get()
