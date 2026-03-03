@@ -12,96 +12,126 @@
   <script src="firebase-config.js"></script>
 
   <style>
-    :root { --primary: #007BFF; --bg: #f4f6f9; --text: #333; }
-    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
-    nav { background: var(--primary); padding: 1rem; text-align: center; color: white; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    nav a { color: white; margin: 0 15px; text-decoration: none; font-weight: 600; cursor: pointer; opacity: 0.9; }
-    nav a:hover { opacity: 1; text-decoration: underline; }
-    .container { max-width: 900px; margin: 30px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .tab { display: none; animation: fadeIn 0.3s ease-in; }
+    :root { --primary: #007BFF; --bg: #f4f6f9; --text: #333; --success: #28a745; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--text); line-height: 1.6; }
+    
+    nav { background: var(--primary); padding: 1rem; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+    nav a { color: white; text-decoration: none; font-weight: 600; cursor: pointer; padding: 5px 10px; border-radius: 4px; transition: 0.2s; }
+    nav a:hover { background: rgba(255,255,255,0.2); }
+    nav a.active-link { background: rgba(0,0,0,0.2); }
+
+    .container { max-width: 1000px; margin: 20px auto; padding: 20px; }
+    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    .tab { display: none; animation: fadeIn 0.3s ease; }
     .tab.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    .problem-card { border-left: 4px solid var(--primary); margin-bottom: 20px; padding: 15px; background: #fdfdfd; border-radius: 0 8px 8px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-    #loader { text-align: center; padding: 60px; font-style: italic; color: #666; }
-    .error-msg { color: #dc3545; background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #ffc1c1; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    .problem-card { border-left: 5px solid var(--primary); padding: 20px; background: #fff; margin-bottom: 15px; border-radius: 0 8px 8px 0; }
+    .badge { font-size: 0.75rem; background: #eee; padding: 3px 8px; border-radius: 12px; text-transform: uppercase; font-weight: bold; }
+    
+    button { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    button:hover { filter: brightness(1.1); }
+    input, textarea, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    
+    #loader { text-align: center; padding: 100px 20px; }
+    .error-msg { color: #dc3545; background: #fff5f5; padding: 20px; border-radius: 8px; border: 1px solid #ffc1c1; text-align: center; }
   </style>
 </head>
 <body>
 
-<nav>
-  <a onclick="showTab('home')">🏠 Home</a>
-  <a onclick="showTab('problems')">📋 Problems</a>
-  <a onclick="showTab('bidding')">⚖️ Bidding</a>
-  <a onclick="showTab('projects')">🏗️ Projects</a>
-  <a onclick="showTab('utopia')">🌌 Utopia</a>
-  <a onclick="showTab('curator')">🛡️ Curator</a>
+<div id="loader">
+  <h2>Synchronizing Platform Data...</h2>
+  <p>Connecting to secure Firestore clusters.</p>
+</div>
+
+<nav id="main-nav" style="display:none;">
+  <a onclick="showTab('home')" id="link-home">🏠 Home</a>
+  <a onclick="showTab('problems')" id="link-problems">📋 Problems</a>
+  <a onclick="showTab('add')" id="link-add">➕ Add</a>
+  <a onclick="showTab('bidding')" id="link-bidding">⚖️ Bidding</a>
+  <a onclick="showTab('utopia')" id="link-utopia">🌌 Utopia</a>
 </nav>
 
 <div class="container">
-  <div id="loader">
-    <h2>Synchronizing with Firestore...</h2>
-    <p>Ensuring secure connection to the Problem Solution Platform.</p>
-  </div>
-
   <div id="home" class="tab">
-    <h1>Problem Solution Platform (PSP)</h1>
-    <p>Accelerating the resolution of human challenges through structured data and mapping.</p>
-    <p>Use the navigation above to explore the current problem registry or the utopia simulator.</p>
-  </div>
-
-  <div id="problems" class="tab">
-    <h2>Global Problem Registry</h2>
-    <div id="problems-list">Connecting to registry...</div>
-  </div>
-
-<div id="bidding" class="tab">
-  <h2>Bidding Portal</h2>
-  <p>Submit and view resource bids for active solutions.</p>
-  <div id="bidding-list" class="card">No active bids found.</div>
-</div>
-
-<div id="projects" class="tab">
-  <h2>Project Tracker</h2>
-  <p>Monitor the implementation of winning bids.</p>
-</div>
-
-  <div id="utopia" class="tab">
-    <h2>Utopia Simulator</h2>
-    <div id="utopia-content">
-      <p>Projecting post-scarcity scenarios based on current solution trajectories.</p>
+    <div class="card">
+      <h1>Problem Solution Platform (PSP)</h1>
+      <p>An "everything app" for mapping and solving human problems—from personal to global/existential.</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+        <div class="card" style="text-align: center; margin: 0;">
+          <h2 id="count-p">0</h2>
+          <p>Global Problems</p>
+        </div>
+        <div class="card" style="text-align: center; margin: 0;">
+          <h2 id="count-s">0</h2>
+          <p>Active Solutions</p>
+        </div>
+      </div>
     </div>
   </div>
 
-<div id="curator" class="tab">
-  <h2>Curator Dashboard</h2>
-  <p>Approve or flag community-submitted problems and solutions.</p>
+  <div id="problems" class="tab">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2>Global Problem Registry</h2>
+      <input type="text" id="search" placeholder="Filter problems..." style="width: 250px; margin: 0;">
+    </div>
+    <div id="problems-list">Loading...</div>
+  </div>
+
+  <div id="add" class="tab">
+    <div class="card">
+      <h2>Identify New Problem</h2>
+      <form id="problem-form">
+        <label>Title</label>
+        <input type="text" id="title" placeholder="e.g., Energy Scarcity" required>
+        <label>Type</label>
+        <select id="type">
+          <option value="Environmental">Environmental</option>
+          <option value="Social/Economic">Social/Economic</option>
+          <option value="Technological">Technological</option>
+          <option value="Health">Health</option>
+        </select>
+        <label>Overview</label>
+        <textarea id="overview" rows="3" placeholder="Describe the problem..." required></textarea>
+        <button type="submit" id="submit-btn">Register Problem</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="bidding" class="tab">
+    <div class="card">
+      <h2>Bidding Portal</h2>
+      <p>Submit proposals to implement solutions for registered problems.</p>
+      <div id="bidding-container">
+        <p>Fetching active opportunities...</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="utopia" class="tab">
+    <div class="card">
+      <h2>Utopia Simulator</h2>
+      <p>Exploring "What if everything were solved?".</p>
+      <div id="utopia-content" class="problem-card" style="border-left-color: var(--success);">
+        Loading scenarios...
+      </div>
+    </div>
+  </div>
 </div>
-
-
-</div>
-
 
 <script>
 let db;
 
 /**
  * BOOTSTRAP: WAITS FOR CONFIG 
- * This checks if the window.firebaseConfig object has been populated 
- * by the external firebase-config.js file.
  */
 function bootstrap(attempts = 0) {
   if (window.firebaseConfig && window.firebaseConfig.apiKey) {
-    console.log("Configuration verified. Starting application...");
     initApp();
-  } else if (attempts < 50) { // Try for 5 seconds total
+  } else if (attempts < 50) {
     setTimeout(() => bootstrap(attempts + 1), 100);
   } else {
-    document.getElementById('loader').innerHTML = `
-      <div class="error-msg">
-        <h3>Connection Failed</h3>
-        <p>Could not locate <strong>firebase-config.js</strong> or valid credentials.</p>
-        <p>Please ensure your config file is uploaded to Vercel in the same directory.</p>
-      </div>`;
+    document.getElementById('loader').innerHTML = `<div class="error-msg"><h3>Bootstrap Failed</h3><p>Verify firebase-config.js is being generated correctly on Vercel.</p></div>`;
   }
 }
 
@@ -111,71 +141,129 @@ function initApp() {
     db = firebase.firestore();
     
     document.getElementById('loader').style.display = 'none';
+    document.getElementById('main-nav').style.display = 'flex';
+    
     showTab('home');
     loadProblems();
     loadUtopia();
   } catch (err) {
-    console.error("Firebase Init Error:", err);
-    document.getElementById('loader').innerHTML = `<p class="error-msg">Initialization Error: ${err.message}</p>`;
+    document.getElementById('loader').innerHTML = `<p class="error-msg">Init Error: ${err.message}</p>`;
   }
 }
 
+/**
+ * DATA LOADERS
+ */
 async function loadProblems() {
   const list = document.getElementById('problems-list');
+  const bidList = document.getElementById('bidding-container');
   try {
-    // Fetches seeded data from 'problems' collection
-    const snapshot = await db.collection('problems').orderBy('rank').get();
-    if (snapshot.empty) {
-      list.innerHTML = "<p>The registry is currently empty. Please run the seed script.</p>";
-      return;
-    }
+    const snapshot = await db.collection('problems').orderBy('rank', 'asc').get();
+    
+    document.getElementById('count-p').innerText = snapshot.size;
+    let solCount = 0;
+    
     list.innerHTML = '';
+    bidList.innerHTML = '';
+
     snapshot.forEach(doc => {
-      const data = doc.data();
+      const p = doc.data();
+      solCount += (p.solutions ? p.solutions.length : 0);
+      
+      // Render Problem Card
       const div = document.createElement('div');
       div.className = 'problem-card';
       div.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <h3 style="margin:0;">#${data.rank} ${data.title}</h3>
-          <span style="font-size:0.8rem; background:#eee; padding:2px 8px; border-radius:4px;">${data.type}</span>
+        <div style="display:flex; justify-content:space-between;">
+          <span class="badge">Rank #${p.rank || '99'}</span>
+          <span class="badge" style="color:var(--primary)">${p.type}</span>
         </div>
-        <p>${data.overview}</p>
-        <small><strong>Current Solutions:</strong> ${data.solutions ? data.solutions.length : 0}</small>
+        <h3>${p.title}</h3>
+        <p>${p.overview}</p>
+        <details>
+          <summary>View Solutions (${p.solutions?.length || 0})</summary>
+          <ul>${p.solutions?.map(s => `<li>${s.text} <small>(${s.status})</small></li>`).join('') || 'No solutions.'}</ul>
+        </details>
       `;
       list.appendChild(div);
+
+      // Render Bidding Opportunity if solutions are 'proposed' or 'exists'
+      if (p.solutions && p.solutions.length > 0) {
+        const bidDiv = document.createElement('div');
+        bidDiv.className = 'problem-card';
+        bidDiv.style.borderLeftColor = '#6c757d';
+        bidDiv.innerHTML = `
+          <h4>Opportunity: ${p.title}</h4>
+          <p>Active Solutions seeking implementation partners.</p>
+          <button onclick="alert('Bidding for ${p.title} is coming in the next build!')">Place Bid</button>
+        `;
+        bidList.appendChild(bidDiv);
+      }
     });
+    
+    document.getElementById('count-s').innerText = solCount;
   } catch (err) {
-    list.innerHTML = `<p class="error-msg">Firestore Error: ${err.message}</p>`;
+    list.innerHTML = `<p class="error-msg">${err.message}</p>`;
   }
 }
 
 async function loadUtopia() {
-  const utopiaDiv = document.getElementById('utopia-content');
+  const content = document.getElementById('utopia-content');
   try {
-    // Fetches seeded data from 'utopia' collection
     const doc = await db.collection('utopia').doc('post-scarcity').get();
     if (doc.exists) {
-      const data = doc.data();
-      utopiaDiv.innerHTML = `
-        <div class="problem-card" style="border-left-color: #28a745;">
-          <h3>${data.title} (QoL: ${data.qol}/100)</h3>
-          <p>${data.description}</p>
-          <p><strong>Impacts:</strong> ${data.pros ? data.pros.join(', ') : 'Abundance'}</p>
-        </div>
+      const d = doc.data();
+      content.innerHTML = `
+        <h3>${d.title} (QoL: ${d.qol}/100)</h3>
+        <p>${d.description}</p>
+        <p><strong>Pros:</strong> ${d.pros.join(', ')}</p>
+        <p><strong>Cons:</strong> ${d.cons.join(', ')}</p>
       `;
     }
-  } catch (err) {
-    console.error("Utopia load error:", err);
-  }
+  } catch (err) { console.error(err); }
 }
 
+/**
+ * FORM HANDLING
+ */
+document.getElementById('problem-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerText = "Submitting...";
+
+  try {
+    await db.collection('problems').add({
+      title: document.getElementById('title').value,
+      type: document.getElementById('type').value,
+      overview: document.getElementById('overview').value,
+      rank: 99,
+      solutions: [],
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    alert("Problem Added!");
+    document.getElementById('problem-form').reset();
+    loadProblems();
+    showTab('problems');
+  } catch (err) {
+    alert("Error: " + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Register Problem";
+  }
+};
+
+/**
+ * UI NAVIGATION
+ */
 function showTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  const activeTab = document.getElementById(id);
-  if (activeTab) activeTab.classList.add('active');
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active-link'));
+  
+  document.getElementById(id).classList.add('active');
+  document.getElementById('link-' + id).classList.add('active-link');
 }
 
-// Start the check for the external config
 bootstrap();
 </script>
 </body>
