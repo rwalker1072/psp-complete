@@ -50,6 +50,7 @@
   <a onclick="showTab('add')" id="link-add">➕ Add</a>
   <a onclick="showTab('bidding')" id="link-bidding">⚖️ Bidding</a>
   <a onclick="showTab('utopia')" id="link-utopia">🌌 Utopia</a>
+<a onclick="showTab('graph')" id="link-graph">🔗 Graph</a>
 </nav>
 
 <div class="container">
@@ -118,6 +119,18 @@
     </div>
   </div>
 </div>
+<div id="graph" class="tab">
+  <div class="card">
+    <h2>Interconnection Map</h2>
+    <p>Mapping the "Wheel Analogy": Every solution creates a new set of challenges.</p>
+    
+    <div id="graph-display" style="background: #f8f9fa; border: 2px dashed #ccc; border-radius: 12px; padding: 20px; min-height: 400px;">
+      <div id="node-chain" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+        <p style="color: #666;">Select a problem from the registry to view its causal chain.</p>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 let db;
@@ -170,7 +183,6 @@ async function loadProblems() {
       const p = doc.data();
       solCount += (p.solutions ? p.solutions.length : 0);
       
-      // Render Problem Card
       const div = document.createElement('div');
       div.className = 'problem-card';
       div.innerHTML = `
@@ -187,7 +199,6 @@ async function loadProblems() {
       `;
       list.appendChild(div);
 
-      // Render Bidding Opportunity if solutions are 'proposed' or 'exists'
       if (p.solutions && p.solutions.length > 0) {
         const bidDiv = document.createElement('div');
         bidDiv.className = 'problem-card';
@@ -224,6 +235,47 @@ async function loadUtopia() {
 }
 
 /**
+ * GRAPH LOGIC: THE CAUSAL CHAIN
+ */
+async function renderGraph() {
+  const container = document.getElementById('node-chain');
+  container.innerHTML = '<h3>Causal Chain Analysis</h3>';
+
+  try {
+    // Pulls 'climate-change' as the demo anchor
+    const doc = await db.collection('problems').doc('climate-change').get();
+    
+    if (doc.exists) {
+      const data = doc.data();
+      
+      container.innerHTML += createNode(data.title, 'Problem', '#dc3545');
+      container.innerHTML += '<span>⬇️ solved by ⬇️</span>';
+      
+      const primarySol = data.solutions ? data.solutions[0].text : "Pending";
+      container.innerHTML += createNode(primarySol, 'Solution', '#28a745');
+      container.innerHTML += '<span>⚠️ creates ⚠️</span>';
+      
+      if (data.derivedProblems && data.derivedProblems.length > 0) {
+        data.derivedProblems.forEach(dp => {
+          container.innerHTML += createNode(dp, 'Derived Problem', '#fd7e14');
+        });
+      }
+    }
+  } catch (err) {
+    container.innerHTML = `<p class="error-msg">Graph Error: ${err.message}</p>`;
+  }
+}
+
+function createNode(text, label, color) {
+  return `
+    <div class="card" style="border: 2px solid ${color}; margin: 0; min-width: 250px; text-align: center;">
+      <small style="color: ${color}; font-weight: bold;">${label}</small>
+      <h4 style="margin: 5px 0;">${text}</h4>
+    </div>
+  `;
+}
+
+/**
  * FORM HANDLING
  */
 document.getElementById('problem-form').onsubmit = async (e) => {
@@ -255,13 +307,18 @@ document.getElementById('problem-form').onsubmit = async (e) => {
 
 /**
  * UI NAVIGATION
+ * This single function handles all tab switching and special triggers like the Graph
  */
 function showTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active-link'));
   
   document.getElementById(id).classList.add('active');
-  document.getElementById('link-' + id).classList.add('active-link');
+  const activeLink = document.getElementById('link-' + id);
+  if (activeLink) activeLink.classList.add('active-link');
+  
+  // Trigger graph render ONLY when the graph tab is active
+  if (id === 'graph') renderGraph();
 }
 
 bootstrap();
