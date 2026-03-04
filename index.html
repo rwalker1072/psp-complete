@@ -215,18 +215,22 @@ function renderFilteredProblems(problems) {
   problems.forEach(p => {
     const div = document.createElement('div');
     div.className = 'problem-card';
-    div.innerHTML = `
-      <div style="display:flex; justify-content:space-between;">
-        <span class="badge">Rank #${p.rank || '99'}</span>
-        <span class="badge" style="color:var(--primary)">${p.type}</span>
-      </div>
-      <h3>${p.title}</h3>
-      <p>${p.overview}</p>
-      <details>
-        <summary>View Solutions (${p.solutions?.length || 0})</summary>
-        <ul>${p.solutions?.map(s => `<li>${s.text} <small>(${s.status})</small></li>`).join('') || 'No solutions.'}</ul>
-      </details>
-    `;
+// Replace the innerHTML inside your renderFilteredProblems loop:
+div.innerHTML = `
+  <div style="display:flex; justify-content:space-between;">
+    <span class="badge">Rank #${p.rank || '99'}</span>
+    <span class="badge" style="color:var(--primary)">${p.type}</span>
+  </div>
+  <h3>${p.title}</h3>
+  <p>${p.overview}</p>
+  <div style="display:flex; gap:10px; margin-top:10px;">
+    <button onclick="viewInGraph('${p.id}')" style="background:#6c757d; padding:5px 10px; font-size:0.8rem;">🔗 View Chain</button>
+    <details style="flex-grow:1;">
+      <summary>View Solutions (${p.solutions?.length || 0})</summary>
+      <ul>${p.solutions?.map(s => `<li>${s.text} <small>(${s.status})</small></li>`).join('') || 'No solutions.'}</ul>
+    </details>
+  </div>
+`;
     list.appendChild(div);
   });
 }
@@ -250,32 +254,44 @@ async function loadUtopia() {
 /**
  * GRAPH LOGIC: THE CAUSAL CHAIN
  */
-async function renderGraph() {
+// ... (Your HTML and Styles remain the same) ...
+
+/**
+ * GRAPH LOGIC: THE CAUSAL CHAIN
+ */
+async function renderGraph(problemId = 'climate-change') {
   const container = document.getElementById('node-chain');
-  container.innerHTML = '<h3>Causal Chain Analysis</h3>';
+  // Back button helps user navigation
+  container.innerHTML = '<button onclick="showTab(\'problems\')" style="margin-bottom:20px; background:#6c757d;">⬅️ Back to Registry</button>';
 
   try {
-    // Pulls 'climate-change' as the demo anchor
-    const doc = await db.collection('problems').doc('climate-change').get();
+    const doc = await db.collection('problems').doc(problemId).get();
     
     if (doc.exists) {
       const data = doc.data();
       
+      // Node 1: Root Problem
       container.innerHTML += createNode(data.title, 'Problem', '#dc3545');
       container.innerHTML += '<span>⬇️ solved by ⬇️</span>';
       
-      const primarySol = data.solutions ? data.solutions[0].text : "Pending";
+      // Node 2: Primary Solution
+      const primarySol = (data.solutions && data.solutions.length > 0) ? data.solutions[0].text : "No Solution Proposed";
       container.innerHTML += createNode(primarySol, 'Solution', '#28a745');
       container.innerHTML += '<span>⚠️ creates ⚠️</span>';
       
+      // Node 3: Derived Problems
       if (data.derivedProblems && data.derivedProblems.length > 0) {
         data.derivedProblems.forEach(dp => {
           container.innerHTML += createNode(dp, 'Derived Problem', '#fd7e14');
         });
+      } else {
+        container.innerHTML += '<p>No derived problems documented yet.</p>';
       }
+    } else {
+       container.innerHTML += `<p class="error-msg">Problem ID "${problemId}" not found in Firestore.</p>`;
     }
   } catch (err) {
-    container.innerHTML = `<p class="error-msg">Graph Error: ${err.message}</p>`;
+    container.innerHTML += `<p class="error-msg">Graph Error: ${err.message}</p>`;
   }
 }
 
@@ -287,6 +303,8 @@ function createNode(text, label, color) {
     </div>
   `;
 }
+
+// ... (Remaining functions for showTab, viewInGraph, and form handling) ...
 
 /**
  * FORM HANDLING
@@ -332,6 +350,11 @@ function showTab(id) {
   
   // Trigger graph render ONLY when the graph tab is active
   if (id === 'graph') renderGraph();
+}
+
+function viewInGraph(id) {
+  showTab('graph'); // Switch to the graph tab
+  renderGraph(id);  // Load the specific problem
 }
 
 bootstrap();
