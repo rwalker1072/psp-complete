@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PSP — Problem Solution Platform</title>
 
+<script src="https://www.gstatic.com/firebasejs/ui/6.1.0/firebase-ui-auth.js"></script>
+<link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/6.1.0/firebase-ui-auth.css" />
+
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -145,16 +148,15 @@
 <div id="curator" class="tab">
   <div class="card">
     <h2>🛡️ Curator Dashboard</h2>
-    <p>Review and verify community-submitted problems and implementation bids.</p>
-    
-    <h3>Pending Problems</h3>
-    <div id="pending-problems" class="problem-card" style="border-left-color: #ffc107;">
-      Fetching submissions...
-    </div>
+    <div id="auth-container"></div> <div id="curator-content" style="display:none;">
+      <p>Logged in as Curator. Manage submissions below.</p>
+      <button onclick="logout()" style="background:#6c757d; margin-bottom: 20px;">Logout</button>
+      
+      <h3>Pending Problems</h3>
+      <div id="pending-problems" class="problem-card" style="border-left-color: #ffc107;">Fetching...</div>
 
-    <h3>Pending Bids</h3>
-    <div id="pending-bids" class="problem-card" style="border-left-color: #17a2b8;">
-      Fetching bids...
+      <h3>Pending Bids</h3>
+      <div id="pending-bids" class="problem-card" style="border-left-color: #17a2b8;">Fetching...</div>
     </div>
   </div>
 </div>
@@ -182,6 +184,7 @@ function initApp() {
     db = firebase.firestore();
     document.getElementById('loader').style.display = 'none';
     document.getElementById('main-nav').style.display = 'flex';
+    initAuth(); // <--- ADD THIS LINE
     showTab('home');
     loadProblems();
     loadUtopia();
@@ -342,9 +345,8 @@ function showTab(id) {
   const link = document.getElementById('link-' + id);
   if (link) link.classList.add('active-link');
   
-  // Specific tab triggers
   if (id === 'graph') renderGraph();
-  if (id === 'curator') loadCuratorData();
+  if (id === 'curator') initAuth(); // <--- CHANGE THIS FROM loadCuratorData()
 }
 
 function viewInGraph(id) {
@@ -414,6 +416,37 @@ async function updateBidStatus(id, status) {
   await db.collection('bids').doc(id).update({ status: status });
   alert(`Bid ${status}!`);
   loadCuratorData();
+}
+
+/**
+ * AUTHENTICATION LOGIC
+ */
+function initAuth() {
+  const ui = new firebaseui.auth.AuthUI(firebase.auth());
+  
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      // User is signed in
+      document.getElementById('auth-container').style.display = 'none';
+      document.getElementById('curator-content').style.display = 'block';
+      loadCuratorData();
+    } else {
+      // User is signed out
+      document.getElementById('auth-container').style.display = 'block';
+      document.getElementById('curator-content').style.display = 'none';
+      ui.start('#auth-container', {
+        signInOptions: [firebase.auth.EmailAuthProvider.PROVIDER_ID],
+        signInSuccessUrl: '#', // Keep user on page
+      });
+    }
+  });
+}
+
+function logout() {
+  firebase.auth().signOut().then(() => {
+    alert("Logged out");
+    showTab('home');
+  });
 }
 
 bootstrap();
