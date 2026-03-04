@@ -215,6 +215,12 @@ async function loadProblems() {
 function renderFilteredProblems(problems) {
   const list = document.getElementById('problems-list');
   list.innerHTML = '';
+  
+  if (problems.length === 0) {
+    list.innerHTML = '<p style="text-align:center; color:#666;">No matching problems found.</p>';
+    return;
+  }
+
   problems.forEach(p => {
     const statusColor = p.rank < 99 ? 'var(--success)' : 'var(--warning)';
     const div = document.createElement('div');
@@ -225,7 +231,9 @@ function renderFilteredProblems(problems) {
         <span class="badge">${p.type}</span>
       </div>
       <h3>${p.title}</h3>
-      <p>${p.overview}</p>
+      <p style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis;">
+        ${p.overview}
+      </p>
       <button onclick="viewInGraph('${p.id}')">View Chain</button>
     `;
     list.appendChild(div);
