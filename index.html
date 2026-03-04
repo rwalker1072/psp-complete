@@ -124,38 +124,49 @@ let allProblems = [];
 // BOOTSTRAP
 function bootstrap(attempts = 0) {
   if (window.firebaseConfig) initApp();
-  else if (attempts < 50) setTimeout(() => bootstrap(attempts+1), 100);
+  else if (attempts < 50) setTimeout(() => bootstrap(attempts + 1), 100);
 }
 
 function initApp() {
-  firebase.initializeApp(window.firebaseConfig);
-  db = firebase.firestore();
-  document.getElementById('loader').style.display = 'none';
-  document.getElementById('main-nav').style.display = 'flex';
-  initAuth();
-  showTab('home');
-  loadProblems();
+  try {
+    firebase.initializeApp(window.firebaseConfig);
+    db = firebase.firestore();
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('main-nav').style.display = 'flex';
+    initAuth();
+    showTab('home');
+    loadProblems();
+    loadUtopia(); // Added missing call
+  } catch (err) {
+    console.error("Init Error:", err);
+  }
 }
 
 // AUTH & WHITELIST
 function initAuth() {
   let ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(firebase.auth());
   const adminWhitelist = [
-  'rwalker1072@gmail.com', // Comma here
-  'rwalker1072@hotmail.com', // Comma here if adding a third
-  'bobx3417@hotmail.com'
-];
+    'rwalker1072@gmail.com',
+    'rwalker1072@hotmail.com',
+    'bobx3417@hotmail.com'
+  ];
 
   firebase.auth().onAuthStateChanged((user) => {
     const authContainer = document.getElementById('auth-container');
     const curatorContent = document.getElementById('curator-content');
     if (user && adminWhitelist.includes(user.email)) {
-      authContainer.style.display = 'none'; curatorContent.style.display = 'block'; loadCuratorData();
+      authContainer.style.display = 'none';
+      curatorContent.style.display = 'block';
+      loadCuratorData();
     } else if (user) {
-      authContainer.innerHTML = `<p>Access Denied: ${user.email}</p><button onclick="logout()">Logout</button>`;
+      authContainer.innerHTML = `<div class="card"><h3>Access Denied</h3><p>${user.email}</p><button onclick="logout()">Logout</button></div>`;
     } else {
-      authContainer.style.display = 'block'; curatorContent.style.display = 'none';
-      ui.start('#auth-container', { signInOptions: [firebase.auth.EmailAuthProvider.PROVIDER_ID], credentialHelper: 'none' });
+      authContainer.style.display = 'block';
+      curatorContent.style.display = 'none';
+      ui.start('#auth-container', {
+        signInOptions: [firebase.auth.EmailAuthProvider.PROVIDER_ID],
+        credentialHelper: 'none'
+      });
     }
   });
 }
@@ -165,14 +176,24 @@ function showTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active-link'));
   document.getElementById(id).classList.add('active');
-  if (document.getElementById('link-'+id)) document.getElementById('link-'+id).classList.add('active-link');
+  if (document.getElementById('link-' + id)) document.getElementById('link-' + id).classList.add('active-link');
   if (id === 'graph') renderGraph();
 }
 
 async function loadProblems() {
-  const snapshot = await db.collection('problems').orderBy('rank', 'asc').get();
-  allProblems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderFilteredProblems(allProblems);
+  try {
+    const snapshot = await db.collection('problems').orderBy('rank', 'asc').get();
+    allProblems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Update Home Dashboard Counters
+    document.getElementById('count-p').innerText = allProblems.length;
+    let solCount = 0;
+    allProblems.forEach(p => solCount += (p.solutions ? p.solutions.length : 0));
+    document.getElementById('count-s').innerText = solCount;
+
+    renderFilteredProblems(allProblems);
+    renderBiddingPortal(allProblems);
+  } catch (err) { console.error("Load Problems Error:", err); }
 }
 
 function renderFilteredProblems(problems) {
@@ -185,26 +206,116 @@ function renderFilteredProblems(problems) {
     div.innerHTML = `
       <div style="display:flex; justify-content:space-between;">
         <span>Rank #${p.rank} <span class="badge" style="background:${statusColor}; color:white;">${p.rank < 99 ? 'Verified' : 'Under Review'}</span></span>
+        <span class="badge">${p.type}</span>
       </div>
       <h3>${p.title}</h3>
+      <p>${p.overview}</p>
       <button onclick="viewInGraph('${p.id}')">View Chain</button>
     `;
     list.appendChild(div);
   });
 }
 
-function viewInGraph(id) { showTab('graph'); renderGraph(id); }
+function renderBiddingPortal(problems) {
+  const container = document.getElementById('bidding-container');
+  container.innerHTML = '';
+  const actionable = problems.filter(p => p.rank < 99);
+  actionable.forEach(p => {
+    container.innerHTML += `
+      <div class="problem-card" style="border-left-color: var(--primary);">
+        <h4>${p.title}</h4>
+        <button onclick="openBidForm('${p.id}', '${p.title}')">Submit Implementation Bid</button>
+      </div>`;
+  });
+}
 
-async function renderGraph(id = 'climate-change') {
-  const container = document.getElementById('node-chain');
-  const doc = await db.collection('problems').doc(id).get();
-  if (doc.exists) {
-    const p = doc.data();
-    container.innerHTML = `<div class="card">${p.title}</div><span>⬇️</span><div class="card">${p.solutions[0].text}</div><span>⬇️</span><div class="card">${p.derivedProblems[0]}</div>`;
+async function loadUtopia() {
+  try {
+    const doc = await db.collection('utopia').doc('post-scarcity').get();
+    if (doc.exists) {
+      const d = doc.data();
+      document.getElementById('utopia-content').innerHTML = `<h3>${d.title}</h3><p>${d.description}</p>`;
+    }
+  } catch (err) { console.error("Utopia Load Error:", err); }
+}
+
+// CURATOR DATA LOADER
+async function loadCuratorData() {
+  try {
+    // Problems Under Review (Rank 99)
+    const pSnap = await db.collection('problems').where('rank', '==', 99).get();
+    const pList = document.getElementById('pending-problems');
+    pList.innerHTML = pSnap.empty ? '<p>No pending problems.</p>' : '';
+    pSnap.forEach(doc => {
+      const p = doc.data();
+      pList.innerHTML += `<div class="card"><h4>${p.title}</h4><button onclick="approveProblem('${doc.id}')">Approve & Rank</button></div>`;
+    });
+
+    // Pending Bids
+    const bSnap = await db.collection('bids').where('status', '==', 'pending').get();
+    const bList = document.getElementById('pending-bids');
+    bList.innerHTML = bSnap.empty ? '<p>No pending bids.</p>' : '';
+    bSnap.forEach(doc => {
+      const b = doc.data();
+      bList.innerHTML += `<div class="card"><p>${b.details}</p><button onclick="updateBidStatus('${doc.id}', 'approved')">Accept Bid</button></div>`;
+    });
+  } catch (err) { console.error("Curator Load Error:", err); }
+}
+
+async function approveProblem(id) {
+  const rank = prompt("Assign Rank (1-98):", "10");
+  if (rank) {
+    await db.collection('problems').doc(id).update({ rank: parseInt(rank) });
+    loadProblems();
+    loadCuratorData();
   }
 }
 
-function logout() { firebase.auth().signOut().then(() => showTab('home')); }
+// GRAPH LOGIC
+async function renderGraph(id = 'climate-change') {
+  const container = document.getElementById('node-chain');
+  try {
+    const doc = await db.collection('problems').doc(id).get();
+    if (doc.exists) {
+      const p = doc.data();
+      container.innerHTML = `
+        <div class="card" style="border:2px solid var(--danger)">${p.title}</div>
+        <span>⬇️ SOLVED BY ⬇️</span>
+        <div class="card" style="border:2px solid var(--success)">${p.solutions?.[0]?.text || 'No Solution'}</div>
+        <span>⚠️ CREATES ⚠️</span>
+        <div class="card" style="border:2px solid var(--warning)">${p.derivedProblems?.[0] || 'No Derived Problem'}</div>
+      `;
+    } else {
+      container.innerHTML = `<p>Select a problem from the registry to view its chain.</p>`;
+    }
+  } catch (err) { console.error("Graph Error:", err); }
+}
+
+// FORMS
+document.getElementById('problem-form').onsubmit = async (e) => {
+  e.preventDefault();
+  await db.collection('problems').add({
+    title: document.getElementById('title').value,
+    type: document.getElementById('type').value,
+    overview: document.getElementById('overview').value,
+    rank: 99,
+    solutions: [],
+    derivedProblems: [],
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  alert("Submitted for review!");
+  loadProblems();
+  showTab('problems');
+};
+
+function openBidForm(id, title) {
+  showTab('submit-bid');
+  document.getElementById('bid-title').innerText = `Bid for: ${title}`;
+  document.getElementById('bid-problem-id').value = id;
+}
+
+function viewInGraph(id) { showTab('graph'); renderGraph(id); }
+function logout() { firebase.auth().signOut().then(() => location.reload()); }
 
 bootstrap();
 </script>
