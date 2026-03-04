@@ -167,55 +167,68 @@ function initApp() {
 /**
  * DATA LOADERS
  */
+let allProblems = []; // Global variable to hold fetched data
+
 async function loadProblems() {
   const list = document.getElementById('problems-list');
   const bidList = document.getElementById('bidding-container');
+  const searchInput = document.getElementById('search');
+
   try {
     const snapshot = await db.collection('problems').orderBy('rank', 'asc').get();
-    
-    document.getElementById('count-p').innerText = snapshot.size;
+    allProblems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Initial Render
+    renderFilteredProblems(allProblems);
+
+    // Update Dashboard Stats
+    document.getElementById('count-p').innerText = allProblems.length;
     let solCount = 0;
-    
-    list.innerHTML = '';
-    bidList.innerHTML = '';
-
-    snapshot.forEach(doc => {
-      const p = doc.data();
-      solCount += (p.solutions ? p.solutions.length : 0);
-      
-      const div = document.createElement('div');
-      div.className = 'problem-card';
-      div.innerHTML = `
-        <div style="display:flex; justify-content:space-between;">
-          <span class="badge">Rank #${p.rank || '99'}</span>
-          <span class="badge" style="color:var(--primary)">${p.type}</span>
-        </div>
-        <h3>${p.title}</h3>
-        <p>${p.overview}</p>
-        <details>
-          <summary>View Solutions (${p.solutions?.length || 0})</summary>
-          <ul>${p.solutions?.map(s => `<li>${s.text} <small>(${s.status})</small></li>`).join('') || 'No solutions.'}</ul>
-        </details>
-      `;
-      list.appendChild(div);
-
-      if (p.solutions && p.solutions.length > 0) {
-        const bidDiv = document.createElement('div');
-        bidDiv.className = 'problem-card';
-        bidDiv.style.borderLeftColor = '#6c757d';
-        bidDiv.innerHTML = `
-          <h4>Opportunity: ${p.title}</h4>
-          <p>Active Solutions seeking implementation partners.</p>
-          <button onclick="alert('Bidding for ${p.title} is coming in the next build!')">Place Bid</button>
-        `;
-        bidList.appendChild(bidDiv);
-      }
-    });
-    
+    allProblems.forEach(p => solCount += (p.solutions ? p.solutions.length : 0));
     document.getElementById('count-s').innerText = solCount;
+
+    // Listen for Search Input
+    searchInput.oninput = (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = allProblems.filter(p => 
+        p.title.toLowerCase().includes(term) || 
+        p.overview.toLowerCase().includes(term) ||
+        p.type.toLowerCase().includes(term)
+      );
+      renderFilteredProblems(filtered);
+    };
+
   } catch (err) {
     list.innerHTML = `<p class="error-msg">${err.message}</p>`;
   }
+}
+
+function renderFilteredProblems(problems) {
+  const list = document.getElementById('problems-list');
+  list.innerHTML = '';
+
+  if (problems.length === 0) {
+    list.innerHTML = "<p>No matching problems found.</p>";
+    return;
+  }
+
+  problems.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'problem-card';
+    div.innerHTML = `
+      <div style="display:flex; justify-content:space-between;">
+        <span class="badge">Rank #${p.rank || '99'}</span>
+        <span class="badge" style="color:var(--primary)">${p.type}</span>
+      </div>
+      <h3>${p.title}</h3>
+      <p>${p.overview}</p>
+      <details>
+        <summary>View Solutions (${p.solutions?.length || 0})</summary>
+        <ul>${p.solutions?.map(s => `<li>${s.text} <small>(${s.status})</small></li>`).join('') || 'No solutions.'}</ul>
+      </details>
+    `;
+    list.appendChild(div);
+  });
 }
 
 async function loadUtopia() {
