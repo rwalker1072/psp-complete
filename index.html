@@ -191,8 +191,24 @@ async function loadProblems() {
     allProblems.forEach(p => solCount += (p.solutions ? p.solutions.length : 0));
     document.getElementById('count-s').innerText = solCount;
 
+    // 1. Initial Render
     renderFilteredProblems(allProblems);
     renderBiddingPortal(allProblems);
+
+    // 2. ADD THIS: The Search Listener Logic
+    const searchInput = document.getElementById('search');
+    if (searchInput) {
+      searchInput.oninput = (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = allProblems.filter(p => 
+          p.title.toLowerCase().includes(term) || 
+          p.overview.toLowerCase().includes(term) ||
+          p.type.toLowerCase().includes(term)
+        );
+        renderFilteredProblems(filtered);
+      };
+    }
+
   } catch (err) { console.error("Load Problems Error:", err); }
 }
 
