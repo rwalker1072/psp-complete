@@ -239,27 +239,67 @@ async function loadUtopia() {
   } catch (err) { console.error("Utopia Load Error:", err); }
 }
 
-// CURATOR DATA LOADER
+/**
+ * UPDATED CURATOR LOGIC
+ */
 async function loadCuratorData() {
   try {
-    // Problems Under Review (Rank 99)
+    // 1. Problems Under Review
     const pSnap = await db.collection('problems').where('rank', '==', 99).get();
     const pList = document.getElementById('pending-problems');
     pList.innerHTML = pSnap.empty ? '<p>No pending problems.</p>' : '';
     pSnap.forEach(doc => {
       const p = doc.data();
-      pList.innerHTML += `<div class="card"><h4>${p.title}</h4><button onclick="approveProblem('${doc.id}')">Approve & Rank</button></div>`;
+      pList.innerHTML += `
+        <div class="card" id="curator-p-${doc.id}">
+          <h4>${p.title}</h4>
+          <p>${p.overview}</p>
+          <button onclick="approveProblem('${doc.id}')">Approve & Rank</button>
+          <button onclick="rejectItem('problems', '${doc.id}')" style="background:var(--danger); margin-left:10px;">Reject & Delete</button>
+        </div>`;
     });
 
-    // Pending Bids
+    // 2. Pending Bids
     const bSnap = await db.collection('bids').where('status', '==', 'pending').get();
     const bList = document.getElementById('pending-bids');
     bList.innerHTML = bSnap.empty ? '<p>No pending bids.</p>' : '';
     bSnap.forEach(doc => {
       const b = doc.data();
-      bList.innerHTML += `<div class="card"><p>${b.details}</p><button onclick="updateBidStatus('${doc.id}', 'approved')">Accept Bid</button></div>`;
+      bList.innerHTML += `
+        <div class="card" id="curator-b-${doc.id}">
+          <p><strong>Proposal:</strong> ${b.details}</p>
+          <p><strong>Amount:</strong> $${b.amount}</p>
+          <button onclick="updateBidStatus('${doc.id}', 'approved')">Accept Bid</button>
+          <button onclick="updateBidStatus('${doc.id}', 'rejected')" style="background:var(--danger); margin-left:10px;">Reject Bid</button>
+        </div>`;
     });
   } catch (err) { console.error("Curator Load Error:", err); }
+}
+
+/**
+ * DELETION LOGIC
+ */
+async function rejectItem(collection, id) {
+  if (confirm(`Are you sure you want to permanently delete this ${collection.slice(0, -1)}?`)) {
+    try {
+      await db.collection(collection).doc(id).delete();
+      alert("Item deleted successfully.");
+      loadCuratorData(); // Refresh UI
+      if (collection === 'problems') loadProblems(); // Refresh Registry
+    } catch (err) {
+      alert("Error deleting item: " + err.message);
+    }
+  }
+}
+
+async function updateBidStatus(id, status) {
+  try {
+    await db.collection('bids').doc(id).update({ status: status });
+    alert(`Bid has been ${status}.`);
+    loadCuratorData();
+  } catch (err) {
+    alert("Error updating bid: " + err.message);
+  }
 }
 
 async function approveProblem(id) {
