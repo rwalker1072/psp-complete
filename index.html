@@ -45,6 +45,7 @@
   <a onclick="showTab('bidding')" id="link-bidding">⚖️ Bidding</a>
   <a onclick="showTab('utopia')" id="link-utopia">🌌 Utopia</a>
   <a onclick="showTab('graph')" id="link-graph">🔗 Graph</a>
+<a onclick="showTab('curator')" id="link-curator">🛡️ Curator</a>
 </nav>
 
 <div class="container">
@@ -137,6 +138,23 @@
           <p style="color: #666;">Select a problem from the registry to view its causal chain.</p>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="curator" class="tab">
+  <div class="card">
+    <h2>🛡️ Curator Dashboard</h2>
+    <p>Review and verify community-submitted problems and implementation bids.</p>
+    
+    <h3>Pending Problems</h3>
+    <div id="pending-problems" class="problem-card" style="border-left-color: #ffc107;">
+      Fetching submissions...
+    </div>
+
+    <h3>Pending Bids</h3>
+    <div id="pending-bids" class="problem-card" style="border-left-color: #17a2b8;">
+      Fetching bids...
     </div>
   </div>
 </div>
@@ -319,10 +337,14 @@ document.getElementById('problem-form').onsubmit = async (e) => {
 function showTab(id) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('nav a').forEach(a => a.classList.remove('active-link'));
+  
   document.getElementById(id).classList.add('active');
   const link = document.getElementById('link-' + id);
   if (link) link.classList.add('active-link');
+  
+  // Specific tab triggers
   if (id === 'graph') renderGraph();
+  if (id === 'curator') loadCuratorData();
 }
 
 function viewInGraph(id) {
@@ -339,6 +361,59 @@ async function loadUtopia() {
       content.innerHTML = `<h3>${d.title} (QoL: ${d.qol}/100)</h3><p>${d.description}</p>`;
     }
   } catch (err) { console.error(err); }
+}
+
+/**
+ * CURATOR LOGIC
+ */
+async function loadCuratorData() {
+  const pList = document.getElementById('pending-problems');
+  const bList = document.getElementById('pending-bids');
+
+  try {
+    // 1. Fetch Problems marked with rank 99 (Unranked/New)
+    const pSnap = await db.collection('problems').where('rank', '==', 99).get();
+    pList.innerHTML = pSnap.empty ? '<p>No new problems to review.</p>' : '';
+    pSnap.forEach(doc => {
+      const p = doc.data();
+      pList.innerHTML += `
+        <div class="card">
+          <h4>${p.title}</h4>
+          <p>${p.overview}</p>
+          <button onclick="approveProblem('${doc.id}')">Approve & Rank</button>
+        </div>`;
+    });
+
+    // 2. Fetch Bids marked as 'pending'
+    const bSnap = await db.collection('bids').where('status', '==', 'pending').get();
+    bList.innerHTML = bSnap.empty ? '<p>No new bids to review.</p>' : '';
+    bSnap.forEach(doc => {
+      const b = doc.data();
+      bList.innerHTML += `
+        <div class="card">
+          <p><strong>Amount:</strong> $${b.amount}</p>
+          <p>${b.details}</p>
+          <button onclick="updateBidStatus('${doc.id}', 'approved')">Approve</button>
+          <button onclick="updateBidStatus('${doc.id}', 'rejected')" style="background:#dc3545;">Reject</button>
+        </div>`;
+    });
+  } catch (err) { console.error("Curator Error:", err); }
+}
+
+async function approveProblem(id) {
+  const rank = prompt("Assign a Global Rank (1-98):", "10");
+  if (rank) {
+    await db.collection('problems').doc(id).update({ rank: parseInt(rank) });
+    alert("Problem Approved!");
+    loadCuratorData();
+    loadProblems();
+  }
+}
+
+async function updateBidStatus(id, status) {
+  await db.collection('bids').doc(id).update({ status: status });
+  alert(`Bid ${status}!`);
+  loadCuratorData();
 }
 
 bootstrap();
