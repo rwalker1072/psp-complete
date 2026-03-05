@@ -1,3 +1,22 @@
+async function clearAndSeed() {
+  const db = firebase.firestore();
+  const statusLabel = document.getElementById('status'); // Optional: update UI
+  
+  console.log("🗑️ Wiping existing problems...");
+  const snapshot = await db.collection('problems').get();
+  
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  
+  await batch.commit();
+  console.log("✅ Database cleared. Starting fresh 207-problem seed...");
+  
+  // Now call your original seeding function
+  await seedPlatform(); 
+}
+
 async function seedPlatform() {
   const db = firebase.firestore();
   console.log("🚀 Initializing Global Humanity Simulation (207 Problems)...");
